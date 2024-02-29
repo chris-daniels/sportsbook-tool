@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"sort"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -35,6 +33,121 @@ var KEYS_MARKETS = [][]string{
 	// {NCAAB_KEY, NCAAB_MARKETS},
 	// {NFL_KEY, NFL_MARKETS},
 	// {NHL_KEY, NHL_MARKETS},
+}
+
+/************************************************************
+****************Bubble Tea UI********************************
+************************************************************/
+type model struct {
+	offers   []*Offer
+	cursor   int              // which to-do list item our cursor is pointing at
+	selected map[int]struct{} // which to-do items are selected
+}
+
+func initialModel() model {
+	offers, err := FetchOffers()
+	if err != nil {
+		fmt.Printf("Error fetching offers: %v", err)
+		os.Exit(1)
+	}
+
+	return model{
+		selected: make(map[int]struct{}),
+		offers:   offers,
+	}
+}
+
+func (m model) Init() tea.Cmd {
+	// Just return `nil`, which means "no I/O right now, please."
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	// Is it a key press?
+	case tea.KeyMsg:
+
+		// Cool, what was the actual key pressed?
+		switch msg.String() {
+
+		// These keys should exit the program.
+		case "ctrl+c", "q":
+			return m, tea.Quit
+
+		// The "up" and "k" keys move the cursor up
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+
+		// The "down" and "j" keys move the cursor down
+		case "down", "j":
+			if m.cursor < len(m.offers)-1 {
+				m.cursor++
+			}
+
+		// The "enter" key and the spacebar (a literal space) toggle
+		// the selected state for the item that the cursor is pointing at.
+		case "enter", " ":
+			_, ok := m.selected[m.cursor]
+			if ok {
+				delete(m.selected, m.cursor)
+			} else {
+				m.selected[m.cursor] = struct{}{}
+			}
+		}
+	}
+
+	// Return the updated model to the Bubble Tea runtime for processing.
+	// Note that we're not returning a command.
+	return m, nil
+}
+
+func (m model) View() string {
+	// The header
+	s := "Offers\n\n"
+
+	// Iterate over our choices
+	for i, choice := range m.offers {
+
+		// Is the cursor pointing at this choice?
+		cursor := " " // no cursor
+		if m.cursor == i {
+			cursor = ">" // cursor!
+		}
+
+		// Is this choice selected?
+		checked := " " // not selected
+		if _, ok := m.selected[i]; ok {
+			checked = "x" // selected!
+		}
+
+		// Render the row
+		s += fmt.Sprintf("%s [%s] %s vs. %s: %s, %s, %s, %.1f, %d \n",
+			cursor,
+			checked,
+			choice.EventHomeTeam,
+			choice.EventAwayTeam,
+			choice.MarketKey,
+			choice.OutcomeName,
+			choice.OutcomeDesc,
+			choice.OutcomePoint,
+			choice.Price)
+		s += fmt.Sprintf("\tOutlier Score: %.4f \n", choice.OutlierScore)
+
+		competitorPricesString := ""
+		for _, competitorPrice := range choice.CompetitorPrices {
+			competitorPricesString += fmt.Sprintf("%s: %d, ", competitorPrice.Bookmaker, competitorPrice.Price)
+		}
+		s += fmt.Sprintf("\tCompetitorPrices: %s \n", competitorPricesString)
+	}
+
+	// The footer
+	s += "\nPress q to quit.\n"
+
+	// Send the UI for rendering
+	return s
 }
 
 /************************************************************
@@ -93,209 +206,10 @@ type CompetitorPrices struct {
 	Price     int64
 }
 
-var API_KEY = ""
-
 func main() {
-	// Read API key from file
-	apiKey, err := os.ReadFile("TOKEN.txt")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
+	p := tea.NewProgram(initialModel())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
 	}
-	API_KEY = string(apiKey)
-
-	aggOffers := []*Offer{}
-	// iterate over all sports and get offers
-	for _, keyMarket := range KEYS_MARKETS {
-		offers, err := getOffersForSport(keyMarket[0], keyMarket[1])
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		aggOffers = append(aggOffers, offers...)
-	}
-
-	// Sort best offers by outlier score
-	sort.Slice(aggOffers, func(i, j int) bool {
-		return aggOffers[i].OutlierScore > aggOffers[j].OutlierScore
-	})
-
-	// filter for offers with desired bookmaker, price, and number of competitors
-	filteredOffers := []*Offer{}
-	for _, offer := range aggOffers {
-		if offer.Bookmaker == BOOKMAKER && offer.Price < 111 && len(offer.CompetitorPrices) > 4 {
-			filteredOffers = append(filteredOffers, offer)
-		}
-	}
-
-	// print the 10 best offers
-	fmt.Println("Best offers:")
-	for i := 0; i < 10; i++ {
-		// print the offer in a pretty manner
-		fmt.Println("***********Offer************")
-		fmt.Println("\tEventId:", filteredOffers[i].EventId)
-		fmt.Println("\tSportKey:", filteredOffers[i].SportKey)
-		fmt.Println("\tEventHomeTeam:", filteredOffers[i].EventHomeTeam)
-		fmt.Println("\tEventAwayTeam:", filteredOffers[i].EventAwayTeam)
-		fmt.Println("\tBookmaker:", filteredOffers[i].Bookmaker)
-		fmt.Println("\tMarketKey:", filteredOffers[i].MarketKey)
-		fmt.Println("\tOutcomeName:", filteredOffers[i].OutcomeName)
-		fmt.Println("\tOutcomeDesc:", filteredOffers[i].OutcomeDesc)
-		fmt.Println("\tOutcomePoint:", filteredOffers[i].OutcomePoint)
-		fmt.Println("\tPrice:", filteredOffers[i].Price)
-		fmt.Println("\tDecimalPrice:", filteredOffers[i].DecimalPrice)
-		fmt.Println("\tAvergeDecimalPrice:", filteredOffers[i].AvergeDecimalPrice)
-		fmt.Println("\tOutlierScore:", filteredOffers[i].OutlierScore)
-		competitorPricesString := ""
-		for _, competitorPrice := range filteredOffers[i].CompetitorPrices {
-			competitorPricesString += fmt.Sprintf("%s: %d, ", competitorPrice.Bookmaker, competitorPrice.Price)
-		}
-		fmt.Println("\tCompetitorPrices:", competitorPricesString)
-		fmt.Println("*****************************")
-
-	}
-}
-
-func getOffersForSport(sportKey string, markets string) ([]*Offer, error) {
-	// fetch events from odds api. we'll iterate through these and get more bets
-	events, err := getEventsFromOddsApi(sportKey)
-	if err != nil {
-		return nil, err
-	}
-
-	// iterate through events, fetch details, and get best offers from event
-	bestOffers := []*Offer{}
-	for _, event := range events {
-		eventDetails, err := getEventDetailsFromEventOddsApi(event.Id, sportKey, markets)
-		if err != nil {
-			return nil, err
-		}
-		bestOffers = append(bestOffers, processEvent(eventDetails)...)
-	}
-	return bestOffers, nil
-}
-
-func getEventsFromOddsApi(sportKey string) ([]Event, error) {
-	url := fmt.Sprintf("https://api.the-odds-api.com/v4/sports/%s/odds/?apiKey=%s&regions=us", sportKey, API_KEY)
-	client := http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	var events []Event
-	err = json.Unmarshal(body, &events)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	fmt.Printf("Successfully fetched %d events from odds API\n", len(events))
-	return events, nil
-}
-
-func getEventDetailsFromEventOddsApi(eventId string, sportKey string, markets string) (*Event, error) {
-	url := fmt.Sprintf("https://api.the-odds-api.com/v4/sports/%s/events/%s/odds?apiKey=%s&regions=us&markets=%s&oddsFormat=american", sportKey, eventId, API_KEY, markets)
-	fmt.Println(url)
-	client := http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	var eventDetails Event
-	err = json.Unmarshal(body, &eventDetails)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	return &eventDetails, nil
-}
-
-func processEvent(event *Event) []*Offer {
-	// For this event, find the best odds across all bookmakers
-	// We can keep a map:
-	//  - Key is a concatenation of market key, outcome name, outcome description, and outcome point
-	//  - Value is a list off offers from different bookmakers. Each offer is a bookmaker and a price.
-	offerMap := make(map[string][]Offer)
-	for _, bookmaker := range event.Bookmakers {
-		for _, market := range bookmaker.Markets {
-			for _, outcome := range market.Outcomes {
-				key := market.Key + outcome.Name + outcome.Description + fmt.Sprintf("%f", outcome.Point)
-				offerMap[key] = append(offerMap[key], Offer{
-					event.Id,
-					event.SportKey,
-					event.HomeTeam,
-					event.AwayTeam,
-					bookmaker.Key,
-					market.Key,
-					outcome.Name,
-					outcome.Description,
-					outcome.Point,
-					int64(outcome.Price),
-					convertPriceToDecimal(int64(outcome.Price)),
-					0.0,
-					0.0,
-					nil,
-				})
-			}
-		}
-	}
-
-	// Aggregate best offers
-	bestOffers := []*Offer{}
-	for _, offers := range offerMap {
-		var sum float64
-		var maxOffer Offer
-		for _, offer := range offers {
-			sum += offer.DecimalPrice
-			if offer.DecimalPrice > maxOffer.DecimalPrice {
-				maxOffer = offer
-			}
-		}
-		averageDecimalPrice := sum / float64(len(offers))
-		maxOffer.AvergeDecimalPrice = averageDecimalPrice
-		maxOffer.OutlierScore = maxOffer.DecimalPrice / averageDecimalPrice
-		maxOffer.CompetitorPrices = []*CompetitorPrices{}
-		for _, offer := range offers {
-			maxOffer.CompetitorPrices = append(maxOffer.CompetitorPrices, &CompetitorPrices{
-				offer.Bookmaker,
-				offer.Price,
-			})
-		}
-		bestOffers = append(bestOffers, &maxOffer)
-	}
-
-	return bestOffers
-}
-
-func convertPriceToDecimal(price int64) float64 {
-	if price >= 100 {
-		return float64(price) / 100
-	} else if price <= -100 {
-		return 100 / float64(-price)
-	}
-	return float64(price) / 100
 }
