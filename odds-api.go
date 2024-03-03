@@ -143,6 +143,7 @@ func processEvent(event *Event) []*Offer {
 					event.SportKey,
 					event.HomeTeam,
 					event.AwayTeam,
+					event.CommenceTime,
 					bookmaker.Key,
 					market.Key,
 					outcome.Name,

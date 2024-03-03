@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -94,7 +95,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ok {
 				delete(m.selected, m.cursor)
 			} else {
-				m.selected[m.cursor] = struct{}{}
+				err := InsertOffer(m.offers[m.cursor])
+				if err != nil {
+					fmt.Printf("Error inserting offer: %v", err)
+				} else {
+					m.selected[m.cursor] = struct{}{}
+				}
 			}
 		}
 	}
@@ -124,11 +130,12 @@ func (m model) View() string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s vs. %s: %s, %s, %s, %.1f, %d \n",
+		s += fmt.Sprintf("%s [%s] %s vs. %s at %s:\n\t%s, %s, %s, %.1f, %d \n",
 			cursor,
 			checked,
 			choice.EventHomeTeam,
 			choice.EventAwayTeam,
+			choice.CommenceTime,
 			choice.MarketKey,
 			choice.OutcomeName,
 			choice.OutcomeDesc,
@@ -154,11 +161,12 @@ func (m model) View() string {
 ****************API response structure***********************
 ************************************************************/
 type Event struct {
-	Id         string      `json:"id"`
-	SportKey   string      `json:"sport_key"`
-	HomeTeam   string      `json:"home_team"`
-	AwayTeam   string      `json:"away_team"`
-	Bookmakers []Bookmaker `json:"bookmakers"`
+	Id           string      `json:"id"`
+	SportKey     string      `json:"sport_key"`
+	HomeTeam     string      `json:"home_team"`
+	AwayTeam     string      `json:"away_team"`
+	CommenceTime time.Time   `json:"commence_time"`
+	Bookmakers   []Bookmaker `json:"bookmakers"`
 }
 
 type Bookmaker struct {
@@ -187,6 +195,7 @@ type Offer struct {
 	SportKey      string
 	EventHomeTeam string
 	EventAwayTeam string
+	CommenceTime  time.Time
 	Bookmaker     string
 	MarketKey     string
 	OutcomeName   string
