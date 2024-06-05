@@ -13,27 +13,29 @@ const (
 	NCAAB_KEY = "basketball_ncaab"
 	NFL_KEY   = "americanfootball_nfl"
 	NHL_KEY   = "icehockey_nhl"
+	MLB_KEY   = "baseball_mlb"
 
-	NBA_MARKETS   = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
-	NCAAB_MARKETS = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
-	NFL_MARKETS   = "h2h,totals,team_totals,spreads,player_pass_tds,player_pass_yds,player_pass_completions,player_pass_attempts,player_pass_interceptions,player_pass_longest_completion,player_rush_yds,player_rush_attempts,player_rush_longest,player_receptions,player_reception_yds,player_reception_longest,player_kicking_points,player_field_goals,player_tackles_assists,player_anytime_td"
-	NHL_MARKETS   = "h2h,totals,team_totals,spreads,player_points,player_power_play_points,player_assists,player_shots_on_goal,player_total_saves"
-
+	NBA_MARKETS    = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
+	NCAAB_MARKETS  = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
+	NFL_MARKETS    = "h2h,totals,team_totals,spreads,player_pass_tds,player_pass_yds,player_pass_completions,player_pass_attempts,player_pass_interceptions,player_pass_longest_completion,player_rush_yds,player_rush_attempts,player_rush_longest,player_receptions,player_reception_yds,player_reception_longest,player_kicking_points,player_field_goals,player_tackles_assists,player_anytime_td"
+	NHL_MARKETS    = "h2h,totals,team_totals,spreads,player_points,player_power_play_points,player_assists,player_shots_on_goal,player_total_saves"
+	MLB_MARKETS    = "batter_home_runs,batter_hits,batter_total_bases,batter_rbis,batter_runs_scored,batter_hits_runs_rbis,batter_singles,batter_walks,batter_strikeouts,pitcher_strikeouts,pitcher_record_a_win,pitcher_hits_allowed,pitcher_walks,pitcher_earned_runs,pitcher_outs"
 	DRAFTKINGS_KEY = "draftkings"
 	FANDUEL_KEY    = "fanduel"
 )
 
 const (
-	MARKETS   = NBA_MARKETS
-	SPORT     = NBA_KEY
+	MARKETS   = MLB_MARKETS
+	SPORT     = MLB_KEY
 	BOOKMAKER = FANDUEL_KEY
 )
 
 var KEYS_MARKETS = [][]string{
-	{NBA_KEY, NBA_MARKETS},
+	// {NBA_KEY, NBA_MARKETS},
 	// {NCAAB_KEY, NCAAB_MARKETS},
 	// {NFL_KEY, NFL_MARKETS},
 	// {NHL_KEY, NHL_MARKETS},
+	{MLB_KEY, MLB_MARKETS},
 }
 
 /************************************************************
