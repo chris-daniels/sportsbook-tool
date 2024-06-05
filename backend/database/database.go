@@ -1,16 +1,17 @@
-package main
+package database
 
 import (
 	"database/sql"
 	"fmt"
 
+	"github.com/chris-daniels/sportsbook-tool/odds_api"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq" // <------------ here
 )
 
 var DB_PW = ""
 
-func InsertOffer(offer *Offer) error {
+func InsertOffer(offer *odds_api.Offer) error {
 	// Connect to the database
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s sslmode=disable dbname=%s",

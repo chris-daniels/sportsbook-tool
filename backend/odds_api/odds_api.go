@@ -1,4 +1,4 @@
-package main
+package odds_api
 
 import (
 	"encoding/json"
@@ -7,9 +7,98 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"time"
 )
 
 var API_KEY = ""
+
+const (
+	NBA_KEY   = "basketball_nba"
+	NCAAB_KEY = "basketball_ncaab"
+	NFL_KEY   = "americanfootball_nfl"
+	NHL_KEY   = "icehockey_nhl"
+	MLB_KEY   = "baseball_mlb"
+
+	NBA_MARKETS    = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
+	NCAAB_MARKETS  = "h2h,totals,team_totals,spreads,player_points,player_rebounds,player_assists,player_points_rebounds_assists,player_points_rebounds,player_points_assists,player_rebounds_assists"
+	NFL_MARKETS    = "h2h,totals,team_totals,spreads,player_pass_tds,player_pass_yds,player_pass_completions,player_pass_attempts,player_pass_interceptions,player_pass_longest_completion,player_rush_yds,player_rush_attempts,player_rush_longest,player_receptions,player_reception_yds,player_reception_longest,player_kicking_points,player_field_goals,player_tackles_assists,player_anytime_td"
+	NHL_MARKETS    = "h2h,totals,team_totals,spreads,player_points,player_power_play_points,player_assists,player_shots_on_goal,player_total_saves"
+	MLB_MARKETS    = "batter_home_runs,batter_hits,batter_total_bases,batter_rbis,batter_runs_scored,batter_hits_runs_rbis,batter_singles,batter_walks,batter_strikeouts,pitcher_strikeouts,pitcher_record_a_win,pitcher_hits_allowed,pitcher_walks,pitcher_earned_runs,pitcher_outs"
+	DRAFTKINGS_KEY = "draftkings"
+	FANDUEL_KEY    = "fanduel"
+)
+
+const (
+	MARKETS   = MLB_MARKETS
+	SPORT     = MLB_KEY
+	BOOKMAKER = FANDUEL_KEY
+)
+
+var KEYS_MARKETS = [][]string{
+	// {NBA_KEY, NBA_MARKETS},
+	// {NCAAB_KEY, NCAAB_MARKETS},
+	// {NFL_KEY, NFL_MARKETS},
+	// {NHL_KEY, NHL_MARKETS},
+	{MLB_KEY, MLB_MARKETS},
+}
+
+/************************************************************
+**************Types for odds computation*********************
+************************************************************/
+type Offer struct {
+	// Pulled off of the event
+	EventId       string
+	SportKey      string
+	EventHomeTeam string
+	EventAwayTeam string
+	CommenceTime  time.Time
+	Bookmaker     string
+	MarketKey     string
+	OutcomeName   string
+	OutcomeDesc   string
+	OutcomePoint  float64
+	Price         int64
+	DecimalPrice  float64
+
+	// Computed
+	AvergeDecimalPrice float64
+	OutlierScore       float64
+	CompetitorPrices   []*CompetitorPrices
+}
+
+type CompetitorPrices struct {
+	Bookmaker string
+	Price     int64
+}
+
+/************************************************************
+****************API response structure***********************
+************************************************************/
+type Event struct {
+	Id           string      `json:"id"`
+	SportKey     string      `json:"sport_key"`
+	HomeTeam     string      `json:"home_team"`
+	AwayTeam     string      `json:"away_team"`
+	CommenceTime time.Time   `json:"commence_time"`
+	Bookmakers   []Bookmaker `json:"bookmakers"`
+}
+
+type Bookmaker struct {
+	Key     string   `json:"key"`
+	Markets []Market `json:"markets"`
+}
+
+type Market struct {
+	Key      string    `json:"key"`
+	Outcomes []Outcome `json:"outcomes"`
+}
+
+type Outcome struct {
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Point       float64 `json:"point"`
+}
 
 func FetchOffers() ([]*Offer, error) {
 	// Read API key from file

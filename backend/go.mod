@@ -1,4 +1,4 @@
-module temp/sportsbook
+module github.com/chris-daniels/sportsbook-tool
 
 go 1.21.0
 
