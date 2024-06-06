@@ -1,3 +1,8 @@
-.ant-col {
+/* .ant-col {
     margin: auto;
+}
+*/
+.ant-card {
+    /* margin: auto; */
+    width: 50%;
 }

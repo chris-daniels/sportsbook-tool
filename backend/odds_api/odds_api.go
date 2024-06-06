@@ -29,17 +29,17 @@ const (
 )
 
 const (
-	MARKETS   = MLB_MARKETS
-	SPORT     = MLB_KEY
+	MARKETS   = NBA_MARKETS
+	SPORT     = NBA_KEY
 	BOOKMAKER = FANDUEL_KEY
 )
 
 var KEYS_MARKETS = [][]string{
-	// {NBA_KEY, NBA_MARKETS},
+	{NBA_KEY, NBA_MARKETS},
 	// {NCAAB_KEY, NCAAB_MARKETS},
 	// {NFL_KEY, NFL_MARKETS},
 	// {NHL_KEY, NHL_MARKETS},
-	{MLB_KEY, MLB_MARKETS},
+	// {MLB_KEY, MLB_MARKETS},
 }
 
 /************************************************************
@@ -180,7 +180,7 @@ func getEventsFromOddsApi(sportKey string) ([]Event, error) {
 	var events []Event
 	err = json.Unmarshal(body, &events)
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error:", err, string(body))
 		return nil, err
 	}
 	fmt.Printf("Successfully fetched %d events from odds API\n", len(events))

@@ -4,10 +4,19 @@ import React, { useEffect, useState } from 'react';
 
 
 const marketMap =  new Map<string, string>([
+    // Baseball
     ["batter_hits", "Batter Hits"],
     ["pitcher_strikeouts", "Pitcher Strikeouts"],
     ["pitcher_outs", "Pitcher Outs"],
     ["batter_singles", "Batter Singles"],
+    // Baskeball
+    ["player_points", "Player Points"],
+    ["player_assists", "Player Assists"],
+    ["player_rebounds", "Player Rebounds"],
+    ["player_points_assists", "Player Points + Assists"],
+    ["player_points_rebounds", "Player Points + Rebounds"],
+    ["player_rebounds_assists", "Player Rebounds + Assists"],
+
 ]);
 
 type OfferResult = {
@@ -34,7 +43,7 @@ const BetContent: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:3333/offers');
+                const response = await fetch('http://127.0.0.1:3333/offers');
 
                 const result = await response.json() as OfferResult;
                 setData(result.results);
@@ -45,6 +54,28 @@ const BetContent: React.FC = () => {
 
         fetchData();
     }, []);
+
+    const getKey = (eventId: string, marketKey: string, outcomeDesc: string, outcomeName: string) => {
+        return `${eventId}-${marketKey}-${outcomeDesc}-${outcomeName}`;
+    }
+
+    const postBet = async (key: string) => {
+        // Find offer from data based on eventId
+        const offer = data.find((result: Offer) => getKey(result.EventId, result.MarketKey, result.OutcomeDesc, result.OutcomeName) === key);
+        if (!offer) {
+            return;
+        }
+
+        // Post to /bets endpoint with offer in body
+        try {
+            await fetch('http://127.0.0.1:3333/bets', {
+                method: 'POST',
+                body: JSON.stringify(offer),
+            });
+        } catch (error) {
+            console.error('Error posting bet:', error);
+        }
+    }
 
     const getCards = () => {
         return data.map((result: Offer) => {
@@ -67,7 +98,7 @@ const BetContent: React.FC = () => {
                     <p>Outlier Score: {Math.round(result.OutlierScore * 100) / 100}</p>   
                     <br />
                     <Flex justify="center">
-                        <Button type="primary">Choose Bet</Button>  
+                        <Button type="primary" onClick={() => postBet(getKey(result.EventId, result.MarketKey, result.OutcomeDesc, result.OutcomeName))}>Choose Bet</Button>  
                     </Flex>
                 </Card>
             );
